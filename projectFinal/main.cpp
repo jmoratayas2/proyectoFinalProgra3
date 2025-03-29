@@ -2,6 +2,7 @@
 #include <string>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
+#include <fstream>
 using namespace std;
 using json = nlohmann::json;
 const string API_KEY = "AIzaSyDjUcy9IZ8lnzbpRnltVrU7rS4_bNqunUc"; //variable global, es el api key para acceder al api de google.
@@ -67,6 +68,23 @@ string extractTranslation(const string& jsonResponse) {
     return responseJson["data"]["translations"][0]["translatedText"];
 }
 
+void crearArchivotxt()
+{
+    string folderName = "proyectoFinalProgra3";  // Carpeta donde se creará el archivo
+    string filePath = folderName + "C:\proyectoFinalProgra3\projectFinal";  // Ruta en donde se encuentra el archivo
+
+    ofstream file(filePath);
+    if (file.is_open())
+    {
+        file.close();
+        cout << "El archivo se ha creado exitosamente en: " << filePath << endl;
+    }
+    else
+    {
+        cout << "Error al crear archivo." << endl;
+    }
+}
+
 int main() {
     string text;
     cout<<"Ingresa el texto en espanol a traducir"<<endl;
@@ -82,5 +100,7 @@ int main() {
             cerr << "Error al procesar la respuesta JSON." << endl;
         }
     }
+    crearArchivotxt();
     return 0;
 }
+
