@@ -1,7 +1,10 @@
 # depslib dependency file v1.0
-1743227724 source:c:\progra 3\proyectofinal\projectfinal\main.cpp
+1745304566 source:c:\progra 3\proyectofinal\projectfinal\main.cpp
 	<iostream>
+	<cstdlib>
 	<string>
 	<curl/curl.h>
 	<nlohmann/json.hpp>
+	<fstream>
+	<direct.h>
 

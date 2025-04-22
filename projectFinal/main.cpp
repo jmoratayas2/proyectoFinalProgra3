@@ -1,8 +1,10 @@
 #include <iostream>
+#include <cstdlib>
 #include <string>
 #include <curl/curl.h>
 #include <nlohmann/json.hpp>
 #include <fstream>
+#include <direct.h> // _getcwd
 using namespace std;
 using json = nlohmann::json;
 const string API_KEY = "AIzaSyDjUcy9IZ8lnzbpRnltVrU7rS4_bNqunUc"; //variable global, es el api key para acceder al api de google.
@@ -13,6 +15,12 @@ struct Lenguajes {
     string nombre;
 };
 
+// Estructura para el archivo binario
+struct LenguajeBinario {
+    char lenguaje[30];
+    char nombre[30];
+};
+
 //Insertamos el listado de idiomas
 Lenguajes lenguajes[] = {
     {"it", "Italiano"},
@@ -21,7 +29,7 @@ Lenguajes lenguajes[] = {
     {"de", "Aleman"}
 };
 
-// Funci�n para manejar la respuesta de la API
+// Función para manejar la respuesta de la API
 size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     ((string*)userp)->append((char*)contents, size * nmemb);
     return size * nmemb;
@@ -68,24 +76,7 @@ string extractTranslation(const string& jsonResponse) {
     return responseJson["data"]["translations"][0]["translatedText"];
 }
 
-void crearArchivotxt()
-{
-    string folderName = "proyectoFinalProgra3";  // Carpeta donde se crear� el archivo
-    string filePath = folderName + "C:\proyectoFinalProgra3\projectFinal";  // Ruta en donde se encuentra el archivo
-
-    ofstream file(filePath);
-    if (file.is_open())
-    {
-        file.close();
-        cout << "El archivo se ha creado exitosamente en: " << filePath << endl;
-    }
-    else
-    {
-        cout << "Error al crear archivo." << endl;
-    }
-}
-
-int main() {
+void translate(){
     string text;
     cout<<"Ingresa el texto en espanol a traducir"<<endl;
     cin>>text;
@@ -100,7 +91,123 @@ int main() {
             cerr << "Error al procesar la respuesta JSON." << endl;
         }
     }
-    crearArchivotxt();
+}
+
+bool existeArchivoONo(){
+    string rutaArchivo = "";
+    //Obtenemos la ruta del directorio actual, por si llega a cambiar la ubicacion (_getcwd)
+    char cwd[FILENAME_MAX];
+    if (_getcwd(cwd, sizeof(cwd))) {
+        rutaArchivo = string(cwd)+"\\files\\historial.bin";
+    }
+
+    //Se verifica si existe el archivo
+    ifstream archivoExistente(rutaArchivo, ios::binary);
+    if (archivoExistente.is_open()) {
+        //Si el archivo existe ya no se procede a crearse
+        archivoExistente.close();
+        return true;
+    }
+    //Sino existe, el archivo se generara
+    ofstream archivo(rutaArchivo, ios::binary);
+    if (archivo.is_open()) {
+        archivo.close();
+        //Se crea el archivo exitosamente.
+    } else {
+        //No se pudo crear el archivo.
+        return false;
+    }
+    return true;
+}
+
+/*
+    Funciones para crear la encriptacion
+*/
+//Obtenemos el indice de las vocales
+int obtenerIndiceVocal(char c) {
+    // Pasar a minúscula
+    unsigned char uc = static_cast<unsigned char>(c);
+
+    switch (uc) {
+        case 'a':return 1;
+        case 'e':return 2;
+        case 'i':return 3;
+        case 'o':return 4;
+        case 'u':return 5;
+        case 160: return 1;
+        case 130: return 2;
+        case 161: return 3;
+        case 162: return 4;
+        case 163: return 5;
+        default: return 0;
+    }
+}
+//saber si es ñ
+bool esEnie(char c) {
+    unsigned char uc = static_cast<unsigned char>(c);
+    return uc == 164 || uc == 165; // 164: ñ, 165: Ñ en tu consola/codificación
+}
+
+//saber si es mayuscula
+bool esMayu(char c){
+    unsigned char uc = static_cast<unsigned char>(c);
+    if(uc == 165) return true;
+    return false;
+}
+
+//Obtenemos el indice de las consonantes
+int obtenerIndiceConsonante(char text) {
+    text = tolower(text);
+
+    if (!isalpha(text) || obtenerIndiceVocal(text) > 0) return 0;
+
+    string consonantes = "bcdfghjklmnñpqrstvwxyz";
+
+    for (size_t i = 0; i < consonantes.length(); ++i) {
+        if (consonantes[i] == text) {
+            if(i > 12) return i;
+            return i+1;
+        }
+    }
+    return 0;
+}
+
+string encriptarTexto(const string& texto, size_t pos = 0){
+    if (pos >= texto.length()) return "";  // Caso base
+    char c = texto[pos];
+    string codificado = "";
+    int idxV = obtenerIndiceVocal(c);
+    if (idxV > 0) {
+        codificado = "U" + to_string(idxV);
+    } else if (islower(c)) {
+        int idx = obtenerIndiceConsonante(c);
+        if (idx > 0) codificado = "m" + to_string(idx);
+        else codificado = c;
+    } else if (isupper(c)) {
+        int idx = obtenerIndiceConsonante(c);
+        if (idx > 0) codificado = "g" + to_string(idx);
+        else codificado = c;
+    } else {
+        if(esEnie(c)){
+            codificado = esMayu(c) ? "g12" : "m12";
+        } else {
+            codificado = c;
+        }
+    }
+
+    // Llamada recursiva para el resto de la cadena
+    return codificado + encriptarTexto(texto, pos + 1);
+}
+
+int main() {
+    string palabra;
+    cout << "Ingrese el texto a encriptar: ";
+    getline(cin, palabra);
+    string textoEncriptado = encriptarTexto(palabra);
+    cout<<textoEncriptado<<endl;
+    if(existeArchivoONo()){
+        cout<<"Tenemos archivo"<<endl;
+    }
     return 0;
 }
 
