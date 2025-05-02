@@ -15,12 +15,6 @@ struct Lenguajes {
     string nombre;
 };
 
-// Estructura para el archivo binario
-struct LenguajeBinario {
-    char lenguaje[30];
-    char nombre[30];
-};
-
 //Insertamos el listado de idiomas
 Lenguajes lenguajes[] = {
     {"it", "Italiano"},
@@ -76,24 +70,6 @@ string translateText(const string& text, const string& targetLanguage) {
 string extractTranslation(const string& jsonResponse) {
     json responseJson = json::parse(jsonResponse);
     return responseJson["data"]["translations"][0]["translatedText"];
-}
-
-//Funcion para realizar la traduccion, a los 4 idiomas.
-void translate(){
-    string text;
-    cout<<"Ingresa el texto en espanol a traducir"<<endl;
-    cin>>text;
-
-    for (const auto& idioma : lenguajes) {
-        string response = translateText(text, idioma.lenguaje);
-        string translatedText = extractTranslation(response);
-
-        if (!translatedText.empty()) {
-            cout << "Texto traducido al "<<idioma.nombre <<": "<< translatedText << endl;
-        } else {
-            cerr << "Error al procesar la respuesta JSON." << endl;
-        }
-    }
 }
 
 //Funcion para verificar si el archivo existe o no.
@@ -204,7 +180,122 @@ string encriptarTexto(const string& texto, size_t pos = 0){
     return codificado + encriptarTexto(texto, pos + 1);
 }
 
+/*Se crea un struct para almacenar las traducciones y sus funciones adaptables*/
+struct Traducciones {
+    string espanol;
+    string ingles;
+    string italiano;
+    string frances;
+    string aleman;
+
+    void guardar(ofstream& out) const {
+        guardarCadena(out, espanol);
+        guardarCadena(out, ingles);
+        guardarCadena(out, italiano);
+        guardarCadena(out, frances);
+        guardarCadena(out, aleman);
+    }
+
+     void cargar(ifstream& in) {
+        espanol = cargarCadena(in);
+        ingles = cargarCadena(in);
+        italiano = cargarCadena(in);
+        frances = cargarCadena(in);
+        aleman = cargarCadena(in);
+    }
+
+    private:
+    static void guardarCadena(ofstream& out, const string& texto) {
+        uint32_t longitud = texto.size();
+        out.write(reinterpret_cast<char*>(&longitud), sizeof(longitud));
+        out.write(texto.c_str(), longitud);
+    }
+
+    static string cargarCadena(ifstream& in) {
+        uint32_t longitud;
+        in.read(reinterpret_cast<char*>(&longitud), sizeof(longitud));
+        string texto(longitud, '\0');
+        in.read(&texto[0], longitud);
+        return texto;
+    }
+};
+
+//Funcion para realizar la traduccion, a los 4 idiomas.
+void translate(){
+    string text;
+    cout<<"Ingresa el texto en espanol a traducir"<<endl;
+    cin>>text;
+    Traducciones t;
+    t.espanol = text;
+
+    for (const auto& idioma : lenguajes) {
+        string response = translateText(text, idioma.lenguaje);
+        string translatedText = extractTranslation(response);
+
+        if (!translatedText.empty()) {
+            cout << "Texto traducido al "<<idioma.nombre <<": "<< translatedText << endl;
+            if (idioma.nombre == "Ingles")
+                t.ingles = translatedText;
+            else if (idioma.nombre == "Italiano")
+                t.italiano = translatedText;
+            else if (idioma.nombre == "Frances")
+                t.frances = translatedText;
+            else if (idioma.nombre == "Aleman")
+                t.aleman = translatedText;
+        } else {
+            cerr << "Error al procesar la respuesta JSON." << endl;
+        }
+    }
+
+    if(existeArchivoONo("historial.bin")){
+        string rutaArchivo = "";
+        char cwd[FILENAME_MAX];
+        if (_getcwd(cwd, sizeof(cwd))) {
+            rutaArchivo = string(cwd)+"\\files\\historial.bin";
+        }
+        ofstream file(rutaArchivo, ios::binary | ios::app);
+        if (file.is_open()) {
+            t.guardar(file);
+            file.close();
+            cout << "Traducción guardada correctamente en el archivo binario." << endl;
+        } else {
+            cerr << "No se pudo abrir el archivo binario para escritura." << endl;
+        }
+    } else {
+        cerr << "Hubo un error al almacenar las traducciones" << endl;
+    }
+}
+
+void leerHistorial() {
+     if(existeArchivoONo("historial.bin")){
+            string rutaArchivo = "";
+            char cwd[FILENAME_MAX];
+            if (_getcwd(cwd, sizeof(cwd))) {
+                rutaArchivo = string(cwd)+"\\files\\historial.bin";
+            }
+            ifstream file(rutaArchivo, ios::binary);
+            if (!file.is_open()) {
+                cerr << "No se pudo abrir el archivo para lectura." << endl;
+                return;
+            }
+
+            while (file.peek() != EOF) {
+                Traducciones t;
+                t.cargar(file);
+                cout << t.espanol << " | " << t.ingles << " | " << t.italiano << " | "
+                    << t.frances << " | " << t.aleman << endl;
+            }
+
+            file.close();
+     }else{
+         cerr << "No existe ningun historial" << endl;
+     }
+}
+
+
 int main() {
+    leerHistorial();
+    translate();
     return 0;
 }
 
