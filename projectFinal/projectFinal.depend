@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1746154909 source:c:\progra 3\proyectofinal\projectfinal\main.cpp
+1746164591 source:c:\progra 3\proyectofinal\projectfinal\main.cpp
 	<iostream>
 	<cstdlib>
 	<string>
@@ -7,4 +7,5 @@
 	<nlohmann/json.hpp>
 	<fstream>
 	<direct.h>
+	<windows.h>
 

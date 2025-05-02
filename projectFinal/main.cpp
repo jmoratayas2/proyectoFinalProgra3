@@ -5,14 +5,23 @@
 #include <nlohmann/json.hpp>
 #include <fstream>
 #include <direct.h> // _getcwd
+#include <windows.h>
 using namespace std;
 using json = nlohmann::json;
 const string API_KEY = "AIzaSyDjUcy9IZ8lnzbpRnltVrU7rS4_bNqunUc"; //variable global, es el api key para acceder al api de google.
+string logUsuario = "";
 
 // Estructura para verificar el lenguaje
 struct Lenguajes {
     string lenguaje;
     string nombre;
+};
+
+// Estructura para verificar el lenguaje
+struct Usuarios {
+    string nombre1;
+    string apellido1;
+    string carne;
 };
 
 //Insertamos el listado de idiomas
@@ -98,6 +107,28 @@ bool existeArchivoONo(string nombreArchivo){
         return false;
     }
     return true;
+}
+
+//Funcion para agregar la carpeta de cada usuario
+void existeCarpetaUsuario(string usuario){
+    string nuevaRuta = "";
+    char cwd[FILENAME_MAX];
+    if (_getcwd(cwd, sizeof(cwd))) {
+        nuevaRuta = string(cwd)+"\\files\\users\\"+usuario;
+    }
+
+    size_t pos = 0;
+    string subruta = "";
+    while ((pos = nuevaRuta.find('\\', pos)) != string::npos) {
+        subruta = nuevaRuta.substr(0, pos);
+        _mkdir(subruta.c_str());  // Crear cada nivel de carpeta
+        pos++;
+    }
+
+    // Crear la carpeta final
+    if (_mkdir(nuevaRuta.c_str()) == 0) {
+    } else {
+    }
 }
 
 /*
@@ -293,8 +324,85 @@ void leerHistorial() {
      }
 }
 
+//Funcion para mostrar el primer menu
+void menu1(){
+    cout<<"Ingresa a una opcion"<<endl;
+    cout<<"1. Ingresar."<<endl;
+    cout<<"2. Registrarte."<<endl;
+    cout<<"3. Salir."<<endl;
+}
+
+//funcion para agregar un nuevo usuario
+void agregarUsuario(){
+    Usuarios usuario;
+    string usuarioIngreso = "";
+    cout<<"Ingresa tu primer nombre:"<<endl;
+    cin >> usuario.nombre1;
+    cout<<"Ingresa tu primer apellido:"<<endl;
+    cin >> usuario.apellido1;
+    cout<<"Ingresa carne completo (sin guiones, ni espacios):"<<endl;
+    cin >> usuario.carne;
+    usuarioIngreso = usuario.nombre1+"_"+usuario.apellido1+"_"+usuario.carne;
+    cout<<"Tu usuario es: "<<usuarioIngreso<<endl;
+    logUsuario = usuarioIngreso;
+    existeCarpetaUsuario(usuarioIngreso);
+}
+
+//Verificamos si existe el directorio, para ver si existe el usuario
+bool existeDirectorio(const string& ruta) {
+    return _access(ruta.c_str(), 0) == 0;
+}
+
+//funcion para ingresar usuario
+void ingresoUsuario(){
+    system("cls");
+    string usuario = "";
+    cout<<"Ingresa tu usuario:"<<endl;
+    cin>>usuario;
+    string rutaCarpeta = "";
+    //Obtenemos la ruta del directorio actual, por si llega a cambiar la ubicacion (_getcwd)
+    char cwd[FILENAME_MAX];
+    if (_getcwd(cwd, sizeof(cwd))) {
+        rutaCarpeta = string(cwd)+"\\files\\users\\"+usuario;
+    }
+    if(existeDirectorio(rutaCarpeta)){
+        cout<<"Bienveido a tu traductor"<<endl;
+        SetConsoleTitle(usuario.c_str());
+    }else {
+        cout<<"No cuentas con usuario, deseas crear una cuenta?"<<endl;
+        cout<<"1. Si"<<endl;
+        cout<<"2. No"<<endl;
+        int opcion = 0;
+        cin>>opcion;
+        if(opcion == 1){
+            system("cls");
+            agregarUsuario();
+        }else{
+            system("cls");
+        };
+    }
+}
 
 int main() {
+    int opcion = 0;
+    do{
+        menu1();
+        cin >> opcion;
+        switch(opcion){
+            case 1:
+                ingresoUsuario();
+            break;
+            case 2:
+                agregarUsuario();
+            break;
+            case 3:
+                cout<<"Saliendo..."<<endl;
+            break;
+            default:
+                cout<<"Opcion no valida"<<endl;
+            break;
+        }
+    }while(opcion != 3);
     return 0;
 }
 
