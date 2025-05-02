@@ -278,11 +278,31 @@ void translate(){
         }
     }
 
+    //Para el historial
     if(existeArchivoONo("historial.bin")){
         string rutaArchivo = "";
         char cwd[FILENAME_MAX];
         if (_getcwd(cwd, sizeof(cwd))) {
             rutaArchivo = string(cwd)+"\\files\\historial.bin";
+        }
+        ofstream file(rutaArchivo, ios::binary | ios::app);
+        if (file.is_open()) {
+            t.guardar(file);
+            file.close();
+//            cout << "Traducción guardada correctamente en el archivo binario." << endl;
+        } else {
+//            cerr << "No se pudo abrir el archivo binario para escritura." << endl;
+        }
+    } else {
+//        cerr << "Hubo un error al almacenar las traducciones" << endl;
+    }
+
+    //Para el historialUsuario
+    if(existeArchivoONo("users\\"+logUsuario+"\\userHistorial.bin")){
+        string rutaArchivo = "";
+        char cwd[FILENAME_MAX];
+        if (_getcwd(cwd, sizeof(cwd))) {
+            rutaArchivo = string(cwd)+"\\files\\users\\"+logUsuario+"\\userHistorial.bin";
         }
         ofstream file(rutaArchivo, ios::binary | ios::app);
         if (file.is_open()) {
@@ -296,6 +316,7 @@ void translate(){
         cerr << "Hubo un error al almacenar las traducciones" << endl;
     }
 }
+
 
 //Funcion para cargar el archivo del historial completo.
 void leerHistorial() {
@@ -324,6 +345,42 @@ void leerHistorial() {
      }
 }
 
+
+//Funcion para mostrar el segundo menu
+void menu2(){
+    cout<<"Ingresa a una opcion"<<endl;
+    cout<<"1. Traducir."<<endl;
+    cout<<"2. Ver mi historial."<<endl;
+    cout<<"3. Salir de mi usuario."<<endl;
+}
+
+
+//Segunda vista al momento de que el usuario ingresa
+void panelPrincipal(){
+    int opcion = 0;
+    do{
+        menu2();
+        cin >> opcion;
+        switch(opcion){
+            case 1:
+                translate();
+            break;
+            case 2:
+            break;
+            case 3:
+                cout<<"Regresando a menu principal."<<endl;
+                logUsuario = "";
+                system("cls");
+                return;
+            break;
+            default:
+                cout<<"Opcion no valida"<<endl;
+            break;
+        }
+    }while(opcion != 3);
+}
+
+
 //Funcion para mostrar el primer menu
 void menu1(){
     cout<<"Ingresa a una opcion"<<endl;
@@ -334,6 +391,7 @@ void menu1(){
 
 //funcion para agregar un nuevo usuario
 void agregarUsuario(){
+    system("cls");
     Usuarios usuario;
     string usuarioIngreso = "";
     cout<<"Ingresa tu primer nombre:"<<endl;
@@ -368,6 +426,8 @@ void ingresoUsuario(){
     if(existeDirectorio(rutaCarpeta)){
         cout<<"Bienveido a tu traductor"<<endl;
         SetConsoleTitle(usuario.c_str());
+        logUsuario = usuario;
+        panelPrincipal();
     }else {
         cout<<"No cuentas con usuario, deseas crear una cuenta?"<<endl;
         cout<<"1. Si"<<endl;
@@ -383,9 +443,12 @@ void ingresoUsuario(){
     }
 }
 
-int main() {
+//Iniciamos con el menu del proyecto
+void iniciarProyecto(){
     int opcion = 0;
+    system("cls");
     do{
+        SetConsoleTitle("Traductor UMG");
         menu1();
         cin >> opcion;
         switch(opcion){
@@ -403,6 +466,10 @@ int main() {
             break;
         }
     }while(opcion != 3);
+}
+
+int main() {
+    iniciarProyecto();
     return 0;
 }
 
