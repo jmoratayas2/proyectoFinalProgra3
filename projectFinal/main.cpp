@@ -35,6 +35,7 @@ size_t WriteCallback(void* contents, size_t size, size_t nmemb, void* userp) {
     return size * nmemb;
 }
 
+//Funcion para el consumo del api de google translate
 string translateText(const string& text, const string& targetLanguage) {
     CURL* curl;
     CURLcode res;
@@ -71,11 +72,13 @@ string translateText(const string& text, const string& targetLanguage) {
     return readBuffer;
 }
 
+//Funcion para obtener como json la respuesta del api.
 string extractTranslation(const string& jsonResponse) {
     json responseJson = json::parse(jsonResponse);
     return responseJson["data"]["translations"][0]["translatedText"];
 }
 
+//Funcion para realizar la traduccion, a los 4 idiomas.
 void translate(){
     string text;
     cout<<"Ingresa el texto en espanol a traducir"<<endl;
@@ -93,12 +96,13 @@ void translate(){
     }
 }
 
-bool existeArchivoONo(){
+//Funcion para verificar si el archivo existe o no.
+bool existeArchivoONo(string nombreArchivo){
     string rutaArchivo = "";
     //Obtenemos la ruta del directorio actual, por si llega a cambiar la ubicacion (_getcwd)
     char cwd[FILENAME_MAX];
     if (_getcwd(cwd, sizeof(cwd))) {
-        rutaArchivo = string(cwd)+"\\files\\historial.bin";
+        rutaArchivo = string(cwd)+"\\files\\"+nombreArchivo;
     }
 
     //Se verifica si existe el archivo
@@ -172,6 +176,7 @@ int obtenerIndiceConsonante(char text) {
     return 0;
 }
 
+//Funcion para encriptar el texto
 string encriptarTexto(const string& texto, size_t pos = 0){
     if (pos >= texto.length()) return "";  // Caso base
     char c = texto[pos];
@@ -200,14 +205,6 @@ string encriptarTexto(const string& texto, size_t pos = 0){
 }
 
 int main() {
-    string palabra;
-    cout << "Ingrese el texto a encriptar: ";
-    getline(cin, palabra);
-    string textoEncriptado = encriptarTexto(palabra);
-    cout<<textoEncriptado<<endl;
-    if(existeArchivoONo()){
-        cout<<"Tenemos archivo"<<endl;
-    }
     return 0;
 }
 
