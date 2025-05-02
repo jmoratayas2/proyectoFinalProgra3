@@ -266,6 +266,7 @@ void translate(){
     }
 }
 
+//Funcion para cargar el archivo del historial completo.
 void leerHistorial() {
      if(existeArchivoONo("historial.bin")){
             string rutaArchivo = "";
@@ -294,8 +295,6 @@ void leerHistorial() {
 
 
 int main() {
-    leerHistorial();
-    translate();
     return 0;
 }
 
