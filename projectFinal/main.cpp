@@ -6,10 +6,171 @@
 #include <fstream>
 #include <direct.h> // _getcwd
 #include <windows.h>
+#include <bitset>
+#include <queue>
+#include <dirent.h>
+#include <sstream>
+#include <unordered_map>
+#include <vector>
 using namespace std;
 using json = nlohmann::json;
 const string API_KEY = "AIzaSyDjUcy9IZ8lnzbpRnltVrU7rS4_bNqunUc"; //variable global, es el api key para acceder al api de google.
 string logUsuario = "";
+
+/*
+Compresion de archivos con Huffman
+*/
+//Nodo arbol Huffman
+struct HuffmanNode {
+    char caracter;
+    int frecuencia;
+    HuffmanNode* izquierda;
+    HuffmanNode* derecha;
+
+    HuffmanNode(char c, int f) : caracter(c), frecuencia(f), izquierda(nullptr), derecha(nullptr) {}
+};
+
+//Comparador para la cola de prioridad
+struct Compare {
+    bool operator()(HuffmanNode* a, HuffmanNode* b) {
+        return a->frecuencia > b->frecuencia;
+    }
+};
+
+//Recursividad para generar la tabla de codigos
+void generarCodigos(HuffmanNode* root, string str, unordered_map<char, string>& huffmanCode) {
+    if (!root) return;
+
+    if (!root->izquierda && !root->derecha)
+        huffmanCode[root->caracter] = str;
+
+    generarCodigos(root->izquierda, str + "0", huffmanCode);
+    generarCodigos(root->derecha, str + "1", huffmanCode);
+}
+
+//Funcion para listar todos los archivos generados
+void listarArchivos(const string& ruta, vector<string>& archivos) {
+    string patron = ruta + "\\*";
+    WIN32_FIND_DATA findData;
+    HANDLE hFind = FindFirstFile(patron.c_str(), &findData);
+
+    if (hFind == INVALID_HANDLE_VALUE) {
+        cerr << "No se pudo abrir el directorio: " << ruta << endl;
+        return;
+    }
+
+    do {
+        string nombre = findData.cFileName;
+        if (nombre == "." || nombre == "..") continue;
+
+        string rutaCompleta = ruta + "\\" + nombre;
+
+        if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+            // Recurse en subcarpeta
+            listarArchivos(rutaCompleta, archivos);
+        } else {
+            // Es un archivo
+            archivos.push_back(rutaCompleta);
+        }
+
+    } while (FindNextFile(hFind, &findData));
+
+    FindClose(hFind);
+}
+
+//Se lee el contenido de cada archivo
+string leerContenidoArchivo(const string& ruta) {
+    ifstream file(ruta, ios::binary);
+    ostringstream ss;
+    ss << file.rdbuf();
+    return ss.str();
+}
+
+//Se hace la compresion con el metodo Huffman
+void comprimirArchivosHuffmanEnCWD(const string& carpetaRelativa) {
+    char cwd[FILENAME_MAX];
+    if (!_getcwd(cwd, sizeof(cwd))) {
+        cerr << "Error al obtener el directorio actual." << endl;
+        return;
+    }
+
+    string rutaProyecto = string(cwd);
+    string rutaCarpeta = rutaProyecto + "\\" + carpetaRelativa;
+    string rutaSalida = rutaProyecto + "\\comprimido.huff";
+
+    vector<string> archivos;
+    listarArchivos(rutaProyecto, archivos);
+
+    for (const auto& a : archivos) {
+        cout << "Archivo: " << a << endl;
+    }
+
+    if (archivos.empty()) {
+        cerr << "No se encontraron archivos para comprimir en: " << rutaCarpeta << endl;
+        return;
+    }
+
+    unordered_map<char, int> frecuencia;
+    string contenidoTotal;
+
+    cout << "Archivos encontrados:\n";
+    for (const auto& archivo : archivos) {
+        string contenido = leerContenidoArchivo(archivo);
+        if (!contenido.empty()) {
+            cout << " - " << archivo << " (" << contenido.size() << " bytes)\n";
+            contenidoTotal += contenido;
+        }
+    }
+
+    if (contenidoTotal.empty()) {
+        cerr << "No se encontró contenido válido para comprimir." << endl;
+        return;
+    }
+
+    for (char c : contenidoTotal)
+        frecuencia[c]++;
+
+    if (frecuencia.empty()) {
+        cerr << "No hay caracteres válidos para comprimir." << endl;
+        return;
+    }
+
+    priority_queue<HuffmanNode*, vector<HuffmanNode*>, Compare> pq;
+    for (auto& par : frecuencia)
+        pq.push(new HuffmanNode(par.first, par.second));
+
+    if (pq.empty()) {
+        cerr << "Error al construir la cola de prioridad Huffman." << endl;
+        return;
+    }
+
+    HuffmanNode* raiz = nullptr;
+    while (pq.size() > 1) {
+        HuffmanNode* izq = pq.top(); pq.pop();
+        HuffmanNode* der = pq.top(); pq.pop();
+        HuffmanNode* suma = new HuffmanNode('\0', izq->frecuencia + der->frecuencia);
+        suma->izquierda = izq;
+        suma->derecha = der;
+        pq.push(suma);
+    }
+
+    raiz = pq.top();
+    unordered_map<char, string> codigos;
+    generarCodigos(raiz, "", codigos);
+
+    ofstream salida(rutaSalida, ios::binary);
+    if (!salida.is_open()) {
+        cerr << "No se pudo crear el archivo de salida." << endl;
+        return;
+    }
+
+    for (char c : contenidoTotal)
+        salida << codigos[c];
+
+    salida.close();
+    cout << "Archivo comprimido generado exitosamente en: " << rutaSalida << endl;
+}
+
 // Estructura para verificar el lenguaje
 struct Lenguajes {
     string lenguaje;
@@ -64,7 +225,7 @@ string translateText(const string& text, const string& targetLanguage) {
         res = curl_easy_perform(curl);
 
         if (res != CURLE_OK) {//Verificamos la respuesta del api
-            cerr << "Error en la solicitud: " << curl_easy_strerror(res) << std::endl;
+            cerr << "Error en la solicitud: " << curl_easy_strerror(res) << endl;
         }
 
         curl_easy_cleanup(curl);
@@ -828,6 +989,60 @@ void menu2(){
     cout<<"5. Salir de mi usuario."<<endl;
 }
 
+//Funcion para generar el zip del proyecto con powerShell
+void generarZipDelProyecto() {
+    char cwd[FILENAME_MAX];
+    string carpetaProyecto = "";
+
+    if (_getcwd(cwd, sizeof(cwd))) {
+        carpetaProyecto = string(cwd);
+    }
+
+    // Ruta donde se guardará el ZIP dentro de la misma carpeta del proyecto
+    string destinoZip = carpetaProyecto + "\\proyecto_umg.zip";
+
+    // Variable para ejecutar el comando powershell
+    string comando = "powershell -Command \"Compress-Archive -Path \\\"" + carpetaProyecto + "\\*\\\" -DestinationPath \\\"" + destinoZip + "\\\" -Force\"";
+
+    cout << "\nGenerando ZIP en la carpeta del proyecto..." << endl;
+    int resultado = system(comando.c_str());
+    if (resultado == 0) {
+        cout << "ZIP generado: " << destinoZip << endl;
+    } else {
+        cout << "Error al generar el ZIP." << endl;
+    }
+}
+
+
+//Generamos el menu del admin
+void menuAdminZip() {
+    system("cls");
+    int opcion = 0;
+    do {
+        logUsuario = "Hola Admin!";
+        cout << "--- MENU ADMIN ---" << endl;
+        cout << "1. Generar ZIP del proyecto" << endl;
+        cout << "2. Salir" << endl;
+        cout << "Selecciona una opcion: ";
+        cin >> opcion;
+
+        switch (opcion) {
+            case 1:
+                comprimirArchivosHuffmanEnCWD("files\\users");
+                break;
+            case 2:
+                cout << "Saliendo del modo administrador." << endl;
+                logUsuario = "";
+                system("cls");
+                return;
+                break;
+            default:
+                cout << "Opcion no valida." << endl;
+                break;
+        }
+    } while (opcion != 2);
+}
+
 //Segunda vista al momento de que el usuario ingresa
 void panelPrincipal(NodoAvl*& arbolHistorial, NodoAvl*& arbolHistorialUsuario){
     int opcion = 0;
@@ -921,7 +1136,14 @@ void ingresoUsuario(NodoAvl*& arbolHistorial){
     if (_getcwd(cwd, sizeof(cwd))) {
         rutaCarpeta = string(cwd)+"\\files\\users\\"+usuario;
     }
-    if(existeDirectorio(rutaCarpeta)){
+    if(usuario == "admin"){
+        string clave;
+        cout << "Ingresa tu clave de acceso: ";
+        cin >> clave;
+        if(clave == "admin123"){
+                menuAdminZip();
+        }
+    } else if(existeDirectorio(rutaCarpeta)){
         string clave;
         cout << "Ingresa tu clave de acceso: ";
         cin >> clave;
