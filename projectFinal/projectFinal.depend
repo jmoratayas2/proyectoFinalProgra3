@@ -1,5 +1,5 @@
 # depslib dependency file v1.0
-1748672075 source:c:\progra 3\proyectofinal\projectfinal\main.cpp
+1748713728 source:c:\progra 3\proyectofinal\projectfinal\main.cpp
 	<iostream>
 	<cstdlib>
 	<string>
@@ -8,4 +8,10 @@
 	<fstream>
 	<direct.h>
 	<windows.h>
+	<bitset>
+	<queue>
+	<dirent.h>
+	<sstream>
+	<unordered_map>
+	<vector>
 
