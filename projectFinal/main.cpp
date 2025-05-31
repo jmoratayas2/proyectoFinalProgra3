@@ -130,9 +130,6 @@ void existeCarpetaUsuario(string usuario){
     }
 }
 
-/*
-    Funciones para crear la encriptacion
-*/
 //Obtenemos el indice de las vocales
 int obtenerIndiceVocal(char c) {
     // Pasar a minúscula
@@ -223,9 +220,20 @@ void reemplazarPalabrasConNuevaClave(const string& usuario, const string& claveA
         cerr << "No se pudo abrir el archivo encriptado." << endl;
         return;
     }
-    vector<string> nuevasLineas;
-    string linea;
 
+    vector<string> nuevasLineas;
+    string header;
+    getline(entrada, header);
+
+    if (header != "TUMG") {
+        cerr << "El archivo es invalido o se modifico." << endl;
+        entrada.close();
+        return;
+    }
+
+    nuevasLineas.push_back(header);
+
+    string linea;
     while (getline(entrada, linea)) {
         for (char& c : linea) {
             if (c == claveAnterior[0]) c = claveNueva[0];
@@ -615,8 +623,15 @@ void guardarEncriptado(const string& palabra, const string& usuario, NodoAvl* ar
     if (_getcwd(cwd, sizeof(cwd))) {
         ruta = string(cwd) + "\\files\\users\\" + usuario + "\\encriptados.enc";
     }
+
+    bool nuevo = false;
+    ifstream check(ruta);
+    if (!check.good()) nuevo = true;
+    check.close();
+
     ofstream file(ruta, ios::app);
     if (file.is_open()) {
+        if(nuevo) file<<"TUMG\n"; //Se agrega encabezado para la seguridad del archivo.
         file << palabraEncriptada << "\n";
         file.close();
     }
@@ -742,13 +757,75 @@ void crearClavePorDefecto(const string& usuario){
     }
 }
 
+//Funcion para la clave de acceso
+string cifrarClaveDeAcceso(const string& clave){
+    string cifrada = clave;
+    char xorKey = 'K';  // patrón simple
+    for (char& c : cifrada) {
+        c ^= xorKey;
+    }
+    return cifrada;
+}
+
+//Funcion para guardar la clave de ingreso
+void guardarClaveDeIngreso(const string& usuario, const string& clave){
+     string ruta = "";
+    char cwd[FILENAME_MAX];
+    if (_getcwd(cwd, sizeof(cwd))) {
+        ruta = string(cwd) + "\\files\\users\\" + usuario + "\\login.key";
+    }
+    ofstream file(ruta);
+    if (file.is_open()) {
+        file << cifrarClaveDeAcceso(clave);
+        file.close();
+    }
+}
+
+//Funcion para validar la clave de ingreso
+bool validarClaveDeIngreso(const string& usuario, const string& clave){
+    string ruta = "";
+    char cwd[FILENAME_MAX];
+    if (_getcwd(cwd, sizeof(cwd))) {
+        ruta = string(cwd) + "\\files\\users\\" + usuario + "\\login.key";
+    }
+
+    ifstream file(ruta);
+    if (!file.is_open()) return false;
+
+    string claveCifradaGuardada;
+    getline(file, claveCifradaGuardada);
+    file.close();
+
+    return cifrarClaveDeAcceso(clave) == claveCifradaGuardada;
+}
+
+//Funcion para cambiar la clave de ingreso
+void cambiarClaveDeIngreso(){
+    string claveActual, nuevaClave;
+
+    cout << "Ingresa tu clave actual: ";
+    cin >> claveActual;
+
+    if (!validarClaveDeIngreso(logUsuario, claveActual)) {
+        cout << "Clave incorrecta. No se puede cambiar." << endl;
+        return;
+    }
+
+    cout << "Ingresa la nueva clave de acceso: ";
+    cin >> nuevaClave;
+
+    guardarClaveDeIngreso(logUsuario, nuevaClave);
+    cout << "Clave de acceso actualizada correctamente." << endl;
+}
+
 //Funcion para mostrar el segundo menu
 void menu2(){
     cout<<"Ingresa a una opcion"<<endl;
     cout<<"1. Traducir."<<endl;
     cout<<"2. Ver mi historial."<<endl;
     cout<<"3. Cambiar clave."<<endl;
-    cout<<"4. Salir de mi usuario."<<endl;
+    cout<<"4. Cambiar clave de ingreso."<<endl;
+    cout<<"5. Salir de mi usuario."<<endl;
 }
 
 //Segunda vista al momento de que el usuario ingresa
@@ -768,6 +845,9 @@ void panelPrincipal(NodoAvl*& arbolHistorial, NodoAvl*& arbolHistorialUsuario){
                 cambiarClave(logUsuario);
             break;
             case 4:
+                cambiarClaveDeIngreso();
+            break;
+            case 5:
                 sobreEscribirUsuarioDesdeAvl(logUsuario, arbolHistorialUsuario);
                 cout<<"Regresando a menu principal."<<endl;
                 logUsuario = "";
@@ -778,7 +858,7 @@ void panelPrincipal(NodoAvl*& arbolHistorial, NodoAvl*& arbolHistorialUsuario){
                 cout<<"Opcion no valida"<<endl;
             break;
         }
-    }while(opcion != 4);
+    }while(opcion != 5);
 }
 
 //Funcion para mostrar el primer menu
@@ -805,6 +885,23 @@ void agregarUsuario(){
     logUsuario = usuarioIngreso;
     existeCarpetaUsuario(logUsuario);
     crearClavePorDefecto(logUsuario);
+    string clave = obtenerClave(logUsuario);
+    string infoUsuario = usuario.nombre1+","+usuario.apellido1+","+usuario.carne;
+    string infoCifrado = encriptarTexto(infoUsuario, clave);
+    char cwd[FILENAME_MAX];
+    if (_getcwd(cwd, sizeof(cwd))) {
+        string rutaInfo = string(cwd) + "\\files\\users\\" + logUsuario + "\\user.info";
+        ofstream infoFile(rutaInfo);
+        if (infoFile.is_open()) {
+            infoFile << infoCifrado;
+            infoFile.close();
+            cout << "Información personal encriptada y guardada con éxito." << endl;
+        }
+    }
+    string claveIngreso;
+    cout << "Crea una clave de acceso para tu perfil: ";
+    cin >> claveIngreso;
+    guardarClaveDeIngreso(logUsuario, claveIngreso);
 }
 
 //Verificamos si existe el directorio, para ver si existe el usuario
@@ -825,11 +922,28 @@ void ingresoUsuario(NodoAvl*& arbolHistorial){
         rutaCarpeta = string(cwd)+"\\files\\users\\"+usuario;
     }
     if(existeDirectorio(rutaCarpeta)){
-        logUsuario = usuario;
-        cout<<"Bienvenido a tu traductor"<<endl;
-        SetConsoleTitle(usuario.c_str());
-        NodoAvl* arbolHistorialUsuario = cargarHistorialUsuarioAvl(logUsuario);
-        panelPrincipal(arbolHistorial, arbolHistorialUsuario);
+        string clave;
+        cout << "Ingresa tu clave de acceso: ";
+        cin >> clave;
+        if(validarClaveDeIngreso(usuario,clave)){
+            string rutaEnc = rutaCarpeta + "\\encriptados.enc";
+            ifstream checkEnc(rutaEnc);
+            if (checkEnc.is_open()) {
+                string header;
+                getline(checkEnc, header);
+                if (header != "TUMG") {
+                    cerr << "Advertencia: archivo encriptado puede haber sido alterado externamente." << endl;
+                }
+                checkEnc.close();
+            }
+            logUsuario = usuario;
+            cout<<"Bienvenido a tu traductor"<<endl;
+            SetConsoleTitle(usuario.c_str());
+            NodoAvl* arbolHistorialUsuario = cargarHistorialUsuarioAvl(logUsuario);
+            panelPrincipal(arbolHistorial, arbolHistorialUsuario);
+        }else{
+            cout << "Clave incorrecta." << endl;
+        }
     }else {
         cout<<"No cuentas con usuario, deseas crear una cuenta?"<<endl;
         cout<<"1. Si"<<endl;
